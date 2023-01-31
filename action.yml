@@ -1,0 +1,87 @@
+name: Vault Approle Token extractor through Vault Broker API
+description: Acquires a token to be used on vault through the broker API
+branding:
+  icon: package
+  color: blue
+
+inputs:
+  ### Required
+  broker_jwt:
+    description: The JWT to be used on the broker
+    required: true
+  provision_role_id:
+    description: The id of the role to be used during provisioning
+    required: true
+  
+  ### Usually a bad idea / not recommended
+  diff_branch:
+    default: ${{ github.event.repository.default_branch }}
+    description: Branch to diff against
+  repository:
+    default: ${{ github.repository }}
+    description: Non-default repo to clone
+  broker_url:
+    default: https://nr-broker.apps.silver.devops.gov.bc.ca
+    description: Something other than the default broker URL
+  vault_addr:
+    description: Something other than the default vault address
+    default: https://vault-iit.apps.silver.devops.gov.bc.ca
+
+outputs:
+  vault_token:
+    description: The vault token acquired by the action
+    value: ${{ steps.broker.outputs.vault_token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        # Check out build repo
+        repository: ${{ inputs.repository }}
+
+    # Process variables and inputs
+    - id: broker
+      name: Vault Broker
+      shell: bash
+      run: |
+        # Read the intention file and replace the event url and the user id
+        PAYLOAD=$(cat .github/openshift/intention.json | \
+            jq ".event.url=\"${GITHUB_SERVER_URL}${GITHUB_ACTION_PATH}\" | \
+            .user.id=\"${GITHUB_ACTOR}\"")
+
+        # Open an intention to the broker
+          INTENTION=$(curl -s -X POST ${{ inputs.broker_url }}/v1/intention/open \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${{ inputs.broker_jwt}}" \
+          --data-raw "${PAYLOAD}")
+          
+          # Extract both the action and the intention token
+          INTENTION_TOKEN=$(echo "${INTENTION}" | jq -r '.token')
+          ACTION_TOKEN=$(echo "${INTENTION}" | jq -r '.actions.provision.token')
+          
+          # With the action token in hand, provision a secret id for our app role
+          WRAPPED_DATA=$(curl -s -X POST ${{ inputs.broker_url }}/v1/provision/approle/secret-id \
+        -H "x-broker-token: "${ACTION_TOKEN}"" \
+                    -H "x-vault-role-id: "${{ inputs.provision_role_id }}"")
+        WRAPPED_TOKEN=$(echo ${WRAPPED_DATA} | jq -r '.wrap_info.token')
+        
+        # Unwrap the token to get the secret id
+        SECRET_ID=$(curl -s -X POST ${{ inputs.vault_addr }}/v1/sys/wrapping/unwrap \
+            -H "X-Vault-Token: ${WRAPPED_TOKEN}"|jq '.data.secret_id')
+        
+        # Log into vault using the app role url, this will give us back the vault token we need to read the secrets
+          LOGIN=$(curl -s -X POST ${{ inputs.vault_addr }}/v1/auth/vs_apps_approle/login \
+        --data-raw '{ "role_id": "'${{ inputs.provision_role_id }}'", "secret_id": '${SECRET_ID}' }' \
+                    --header 'Content-Type: application/json' | jq -r '.auth.client_token')
+        
+        # Close the broker intention
+        curl -s -X POST ${{ inputs.broker_url }}/v1/intention/close \
+          -H 'Content-Type: application/json' \
+          -H "x-broker-token: ${INTENTION_TOKEN}"
+        
+        # Forward the vault token to be consumed
+        echo vault_token=${LOGIN} >> $GITHUB_OUTPUT
+
+    - name: Checkout Action repo to pass tests
+      uses: actions/checkout@v3
