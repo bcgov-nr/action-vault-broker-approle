@@ -12,10 +12,6 @@ This is useful in CI/CD pipelines where you need to access a secret, get a vault
 
 This tool is currently based on the existing documentation provided by 1team.
 
-Package name: `<organization>/<repository>/<package>:<tag>`
-
-Pull with: `docker pull ghcr.io/<organization>/<repository>/<package>:<tag>` 
-
 # Usage
 
 ```yaml
