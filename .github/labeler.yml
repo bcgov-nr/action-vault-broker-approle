@@ -1,0 +1,8 @@
+actions:
+  - .github/*
+
+source:
+  - action.yml
+
+documentation:
+  - *.md

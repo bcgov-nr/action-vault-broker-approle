@@ -12,10 +12,6 @@ This is useful in CI/CD pipelines where you need to access a secret, get a vault
 
 This tool is currently based on the existing documentation provided by 1team.
 
-Package name: `<organization>/<repository>/<package>:<tag>`
-
-Pull with: `docker pull ghcr.io/<organization>/<repository>/<package>:<tag>` 
-
 # Usage
 
 ```yaml
@@ -28,6 +24,15 @@ Pull with: `docker pull ghcr.io/<organization>/<repository>/<package>:<tag>`
 
     # Role ID for Provision
     provision_role_id: The id of the role to be used during provisioning
+
+    # Project name on vault
+    project_name: Name of the project on vault, Ex. client
+    
+    # Application name on vault
+    app_name: Name of the app on vault, Ex. app-client
+    
+    # Vault environment
+    environment: Name of the vault environment, Ex. development
     
     ### Usually a bad idea / not recommended
 
@@ -81,6 +86,9 @@ jobs:
         with:
           broker_jwt: ${{ secrets.BROKER_JWT }}
           provision_role_id: ${{ secrets.PROVISION_ROLE }}
+          project_name: super
+          app_name: app-super
+          environment: development
       - name: Import Secrets
         id: secrets
         uses: hashicorp/vault-action@v2.5.0
@@ -126,6 +134,9 @@ jobs:
         with:
           broker_jwt: ${{ secrets.BROKER_JWT }}
           provision_role_id: ${{ secrets.PROVISION_ROLE }}
+          project_name: super
+          app_name: app-super
+          environment: development
       - name: Import Secrets
         id: secrets
         uses: hashicorp/vault-action@v2.5.0
