@@ -55,7 +55,8 @@ runs:
       shell: bash
       run: |
         # Read the intention file and replace the event url and the user id
-        PAYLOAD=$(cat .github/intention.json | \
+        PAYLOAD=$(curl -s \
+        https://raw.githubusercontent.com/bcgov-nr/action-vault-broker-approle/main/.github/intention.json | \
             jq ".event.url=\"${GITHUB_SERVER_URL}${GITHUB_ACTION_PATH}\" | \
             .user.id=\"${GITHUB_ACTOR}\" | \
             .event.provider=\"${{ github.repository }}-github-action\" | \

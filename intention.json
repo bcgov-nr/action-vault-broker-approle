@@ -1,0 +1,22 @@
+{
+  "event": {
+    "provider": "placeholderprovider",
+    "reason": "Job triggered",
+    "url": "JOB_URL"
+  },
+  "actions": [
+    {
+      "action": "package-provision",
+      "id": "provision",
+      "provision": ["approle/secret-id"],
+      "service": {
+        "name": "placeholdername",
+        "project": "placeholderclient",
+        "environment": "placeholderenv"
+      }
+    }
+  ],
+  "user": {
+    "id": "placeholderuser"
+  }
+}
