@@ -51,8 +51,30 @@ runs:
       name: Vault Broker
       shell: bash
       run: |
+        #Creating the intention template inline
+        TEMPLATE="{
+            \"event\": {
+              \"provider\": \"\",
+              \"reason\": \"Job triggered\",
+              \"url\": \"\"
+            },
+            \"actions\": [{
+              \"action\": \"package-provision\",
+              \"id\": \"provision\",
+              \"provision\": [\"approle/secret-id\"],
+              \"service\": {
+                \"name\": \"\",
+                \"project\": \"\",
+                \"environment\": \"\"
+              }
+            }],
+            \"user\": {
+                \"id\": \"\"
+            }
+          }"
+
         # Read the intention file and replace the event url and the user id
-        PAYLOAD=$(cat .github/intention.json | \
+        PAYLOAD=$(echo ${TEMPLATE} | \
           jq ".event.url=\"${GITHUB_SERVER_URL}${GITHUB_ACTION_PATH}\" | \
           .user.id=\"${GITHUB_ACTOR}\" | \
           .event.provider=\"${{ github.repository }}-github-action\" | \
