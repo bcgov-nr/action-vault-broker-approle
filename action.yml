@@ -21,7 +21,7 @@ inputs:
   environment:
     description: Name of the vault environment, Ex. development
     required: true
-  
+
   ### Usually a bad idea / not recommended
   diff_branch:
     default: ${{ github.event.repository.default_branch }}
@@ -45,9 +45,6 @@ runs:
   using: composite
   steps:
     - uses: actions/checkout@v3
-      with:
-        # Check out build repo
-        repository: ${{ inputs.repository }}
 
     # Process variables and inputs
     - id: broker
@@ -55,8 +52,7 @@ runs:
       shell: bash
       run: |
         # Read the intention file and replace the event url and the user id
-        PAYLOAD=$(curl -s \
-        https://raw.githubusercontent.com/bcgov-nr/action-vault-broker-approle/main/.github/intention.json | \
+          PAYLOAD=$(cat .github/intention.json | \
             jq ".event.url=\"${GITHUB_SERVER_URL}${GITHUB_ACTION_PATH}\" | \
             .user.id=\"${GITHUB_ACTOR}\" | \
             .event.provider=\"${{ github.repository }}-github-action\" | \
@@ -79,21 +75,21 @@ runs:
         -H "x-broker-token: "${ACTION_TOKEN}"" \
                     -H "x-vault-role-id: "${{ inputs.provision_role_id }}"")
         WRAPPED_TOKEN=$(echo ${WRAPPED_DATA} | jq -r '.wrap_info.token')
-        
+
         # Unwrap the token to get the secret id
         SECRET_ID=$(curl -s -X POST ${{ inputs.vault_addr }}/v1/sys/wrapping/unwrap \
             -H "X-Vault-Token: ${WRAPPED_TOKEN}"|jq '.data.secret_id')
-        
+
         # Log into vault using the app role url, this will give us back the vault token we need to read the secrets
           LOGIN=$(curl -s -X POST ${{ inputs.vault_addr }}/v1/auth/vs_apps_approle/login \
         --data-raw '{ "role_id": "'${{ inputs.provision_role_id }}'", "secret_id": '${SECRET_ID}' }' \
                     --header 'Content-Type: application/json' | jq -r '.auth.client_token')
-        
+
         # Close the broker intention
         curl -s -X POST ${{ inputs.broker_url }}/v1/intention/close \
           -H 'Content-Type: application/json' \
           -H "x-broker-token: ${INTENTION_TOKEN}"
-        
+
         # Forward the vault token to be consumed
         echo vault_token=${LOGIN} >> $GITHUB_OUTPUT
 
