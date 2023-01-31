@@ -14,12 +14,14 @@ jobs:
     runs-on: ubuntu-22.04    
     steps:
       - uses: actions/checkout@v3
+
       - name: Test Retags
         id: broker
         uses: ./
         with:
           broker_jwt: ${{ secrets.BROKER_JWT }}
           provision_role_id: ${{ secrets.PROVISION_ROLE }}
+
       - name: Import Secrets
         id: secrets
         uses: hashicorp/vault-action@v2.5.0
@@ -28,5 +30,7 @@ jobs:
           token: ${{ steps.broker.outputs.vault_token }}
           exportEnv: 'false'
           secrets: |
-            apps/data/dev/client/app-client/db_proxy_read_only db_username | VAULT_DB_USER;
-            apps/data/dev/client/app-client/db_proxy_read_only db_password | VAULT_DB_PASS;
+            apps/data/${{ secrets.SECRET_PATH}} sample | SAMPLE;
+
+      - name: Checks
+        run: echo ${{ steps.secrets.outputs.SAMPLE }}
