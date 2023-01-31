@@ -21,6 +21,9 @@ jobs:
         with:
           broker_jwt: ${{ secrets.BROKER_JWT }}
           provision_role_id: ${{ secrets.PROVISION_ROLE }}
+          project_name: client
+          app_name: app-client
+          environment: development
 
       - name: Import Secrets
         id: secrets
