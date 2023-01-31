@@ -12,6 +12,15 @@ inputs:
   provision_role_id:
     description: The id of the role to be used during provisioning
     required: true
+  project_name:
+    description: Name of the project on vault, Ex. client
+    required: true
+  app_name:
+    description: Name of the app on vault, Ex. app-client
+    required: true
+  environment:
+    description: Name of the vault environment, Ex. development
+    required: true
   
   ### Usually a bad idea / not recommended
   diff_branch:
@@ -46,9 +55,13 @@ runs:
       shell: bash
       run: |
         # Read the intention file and replace the event url and the user id
-        PAYLOAD=$(cat .github/openshift/intention.json | \
+        PAYLOAD=$(cat .github/intention.json | \
             jq ".event.url=\"${GITHUB_SERVER_URL}${GITHUB_ACTION_PATH}\" | \
-            .user.id=\"${GITHUB_ACTOR}\"")
+            .user.id=\"${GITHUB_ACTOR}\" | \
+            .event.provider=\"${{ github.repository }}-github-action\" | \
+            .actions[0].service.name=\"${{ inputs.app_name }}\" | \
+            .actions[0].service.project=\"${{ inputs.project_name }}\" | \
+            .actions[0].service.environment=\"${{ inputs.environment }}\"")
 
         # Open an intention to the broker
           INTENTION=$(curl -s -X POST ${{ inputs.broker_url }}/v1/intention/open \
