@@ -11,17 +11,51 @@ concurrency:
 
 jobs:
   # If merged into main, then handle any image promotions
-  image-promotions:
-    name: Image Promotions
+  release:
+    name: Action release
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
-    runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        package: [backend, database, frontend]
+    runs-on: ubuntu-22.04    
     steps:
-      - uses: shrink/actions-docker-registry-tag@v3
+      - uses: actions/checkout@v3
         with:
-          registry: ghcr.io
-          repository: ${{ github.repository }}/${{ matrix.package }}
-          target: ${{ github.event.number }}
-          tags: test
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Backing up Changelog
+        run: |
+            mv CHANGELOG.md OLD.CHANGELOG.md
+            touch CHANGELOG.md
+
+      - name: Conventional Changelog Update
+        uses: TriPSs/conventional-changelog-action@v3
+        id: changelog
+        with:
+          github-token: ${{ github.token }}
+          output-file: 'CHANGELOG.md'
+          skip-version-file: 'true'
+          skip-commit: 'true'
+          git-push: 'false'
+      
+      - name: Merging Changelog
+        if: ${{ !steps.changelog.outputs.skipped }}
+        run: |
+            mv CHANGELOG.md RELEASE.md
+            cat RELEASE.md OLD.CHANGELOG.md > CHANGELOG.md
+      
+      - name: Update resources
+        uses: test-room-7/action-update-file@v1.6.0
+        if: ${{ !steps.changelog.outputs.skipped }}
+        with:
+          file-path: CHANGELOG.md
+          commit-msg: "doc: updating changelog"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: ${{ !steps.changelog.outputs.skipped }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          name: ${{ steps.changelog.outputs.tag }}
+          body: ${{ steps.changelog.outputs.clean_changelog }}
