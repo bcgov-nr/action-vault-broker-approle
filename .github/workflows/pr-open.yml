@@ -66,6 +66,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
   retags:
+    name: Test action
     permissions:
       packages: write
     runs-on: ubuntu-22.04    

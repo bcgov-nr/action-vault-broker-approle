@@ -51,6 +51,16 @@ runs:
       name: Vault Broker
       shell: bash
       run: |
+        read_and_delete(){
+            if [[ -e $1 ]]; then
+                local FILE_CONTENT=$(cat $1)
+                rm -f $1
+                echo $FILE_CONTENT
+            else
+                echo "Cannot find file $1"        
+                exit 19
+            fi
+        }
         #Creating the intention template inline
         TEMPLATE="{
             \"event\": {
@@ -83,29 +93,60 @@ runs:
           .actions[0].service.environment=\"${{ inputs.environment }}\"")
 
         # Open an intention to the broker
-        INTENTION=$(curl -s -X POST ${{ inputs.broker_url }}/v1/intention/open \
+        INTENTION=$(curl -o intention.txt -w "%{http_code}" -s -X POST ${{ inputs.broker_url }}/v1/intention/open \
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer ${{ inputs.broker_jwt}}" \
           --data-raw "${PAYLOAD}")
+        
+        if [[ $INTENTION -eq 201 ]]; then
+            INTENTION=$(read_and_delete intention.txt)
+        else
+          echo "::error title=Intention,line=96::Intention cannot be opened with provided jwt token"
+          exit 19
+        fi
 
         # Extract both the action and the intention token
         INTENTION_TOKEN=$(echo "${INTENTION}" | jq -r '.token')
         ACTION_TOKEN=$(echo "${INTENTION}" | jq -r '.actions.provision.token')
 
         # With the action token in hand, provision a secret id for our app role
-        WRAPPED_DATA=$(curl -s -X POST ${{ inputs.broker_url }}/v1/provision/approle/secret-id \
+        WRAPPED_DATA=$(curl -o wrappeddata.txt -w "%{http_code}" -s -X POST ${{ inputs.broker_url }}/v1/provision/approle/secret-id \
           -H "x-broker-token: "${ACTION_TOKEN}"" \
           -H "x-vault-role-id: "${{ inputs.provision_role_id }}"")
+        
+        if [[ $WRAPPED_DATA -eq 201 ]]; then
+            WRAPPED_DATA=$(read_and_delete wrappeddata.txt)    
+        else
+            echo "::error title=Approle Secret,line=113::Approle secret cannot be acquired, invalid token"
+            exit 19
+        fi
+            
         WRAPPED_TOKEN=$(echo ${WRAPPED_DATA} | jq -r '.wrap_info.token')
 
         # Unwrap the token to get the secret id
-        SECRET_ID=$(curl -s -X POST ${{ inputs.vault_addr }}/v1/sys/wrapping/unwrap \
-          -H "X-Vault-Token: ${WRAPPED_TOKEN}"|jq '.data.secret_id')
+        SECRET_ID=$(curl -o secret.txt -w "%{http_code}" -s -X POST ${{ inputs.vault_addr }}/v1/sys/wrapping/unwrap \
+          -H "X-Vault-Token: ${WRAPPED_TOKEN}")
+        
+        if [[ $SECRET_ID -eq 200 ]]; then
+            SECRET_ID=$(read_and_delete secret.txt)
+            SECRET_ID=$(echo ${SECRET_ID}|jq '.data.secret_id')
+        else
+            echo "::error title=Secret ID,line=127::Secret ID cannot be unwrapped"
+            exit 19
+        fi
 
         # Log into vault using the app role url, this will give us back the vault token we need to read the secrets
-        LOGIN=$(curl -s -X POST ${{ inputs.vault_addr }}/v1/auth/vs_apps_approle/login \
+        LOGIN=$(curl -o login.txt -w "%{http_code}" -s -X POST ${{ inputs.vault_addr }}/v1/auth/vs_apps_approle/login \
           --data-raw '{ "role_id": "'${{ inputs.provision_role_id }}'", "secret_id": '${SECRET_ID}' }' \
-          --header 'Content-Type: application/json' | jq -r '.auth.client_token')
+          --header 'Content-Type: application/json')
+
+        if [[ $LOGIN -eq 200 ]]; then
+            LOGIN=$(read_and_delete login.txt)
+            LOGIN=$(echo ${LOGIN} | jq -r '.auth.client_token')
+        else
+            echo "::error title=Vault Login,line=139::Cannot log into vault due to provision error"
+            exit 19
+        fi
 
         # Close the broker intention
         curl -s -X POST ${{ inputs.broker_url }}/v1/intention/close \
