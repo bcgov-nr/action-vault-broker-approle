@@ -125,7 +125,7 @@ runs:
 
         # Unwrap the token to get the secret id
         SECRET_ID=$(curl -o secret.txt -w "%{http_code}" -s -X POST ${{ inputs.vault_addr }}/v1/sys/wrapping/unwrap \
-          -H "X-Vault-Token: ${WRAPPED_TOKEN}"|jq '.data.secret_id')
+          -H "X-Vault-Token: ${WRAPPED_TOKEN}")
         
         if [[ $SECRET_ID -eq 200 ]]; then
             SECRET_ID=$(read_and_delete secret.txt)
