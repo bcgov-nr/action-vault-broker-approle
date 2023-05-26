@@ -43,7 +43,7 @@ jobs:
             cat RELEASE.md OLD.CHANGELOG.md > CHANGELOG.md
       
       - name: Update resources
-        uses: test-room-7/action-update-file@v1.6.0
+        uses: test-room-7/action-update-file@v1.8.0
         if: ${{ !steps.changelog.outputs.skipped }}
         with:
           file-path: CHANGELOG.md
