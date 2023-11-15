@@ -37,6 +37,7 @@ const intention = (projectName, serviceName, environment, eventURL) => {
 
 async function openBrokerIntention(intentionPayload) {
   try {
+    console.info(`intentionPayload: ${intentionPayload}`);
     const intentionResponse = await axios.post(`${broker_url}/v1/intention/open`, intentionPayload, {
       headers: {
         'Content-Type': 'application/json',
