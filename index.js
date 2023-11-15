@@ -10,6 +10,10 @@ const app_name = getInput('app_name');
 const environment = getInput('environment');
 const broker_url = getInput('broker_url');
 const vault_addr = getInput('vault_addr');
+const setFatal = (message) => {
+  setFailed(message);
+  process.exit(1);
+}
 const intention = (projectName, serviceName, environment, eventURL) => {
   return `{
     "event": {
@@ -45,31 +49,31 @@ async function openBrokerIntention(intentionPayload) {
       }
     });
     if (intentionResponse.status !== 201) {
-      setFailed(`intention call failed: ${intentionResponse.status}`);
+      setFatal(`intention call failed: ${intentionResponse.status}`);
     }
     const intentionToken = intentionResponse.data.token;
     const actionToken = intentionResponse.data.actions.access.token;
     return {intentionToken, actionToken};
   } catch (e) {
-    setFailed(`intention call failed: ${e}`);
+    setFatal(`intention call failed: ${e}`);
   }
 
 }
 
 async function getWrappedToken(actionToken) {
   try {
-    const wrappedData = await axios.post(`${vault_addr}/v1/provision/token/self`, {}, {
+    const wrappedData = await axios.post(`${vault_addr}/v1/provision/token/self`, undefined, {
       headers: {
         'x-broker-token': actionToken,
         'x-vault-role-id': provision_role_id
       }
     });
     if (wrappedData.status !== 201) {
-      setFailed(`wrapped token call failed: ${wrappedData.status}`);
+      setFatal(`wrapped token call failed: ${wrappedData.status}`);
     }
     return wrappedData.data.wrap_info.token;
   } catch (e) {
-    setFailed(`wrapped token call failed: ${e}`);
+    setFatal(`wrapped token call failed: ${e}`);
   }
 
 }
@@ -83,7 +87,7 @@ async function getVaultToken(wrappedToken) {
     });
     return vaultTokenResponse.data.auth.client_token;
   } catch (e) {
-    setFailed(`vault token call failed: ${e}`);
+    setFatal(`vault token call failed: ${e}`);
   }
 }
 
@@ -95,43 +99,43 @@ async function closeIntention(intentionToken) {
       }
     });
   } catch (e) {
-    setFailed(`intention close call failed: ${e}`);
+    setFatal(`intention close call failed: ${e}`);
   }
 }
 async function main() {
   if (!broker_jwt || broker_jwt === '') {
-    setFailed('broker_jwt is required');
+    setFatal('broker_jwt is required');
   }
   if (!provision_role_id || provision_role_id === '') {
-    setFailed('provision_role_id is required');
+    setFatal('provision_role_id is required');
   }
   if (!project_name || project_name === '') {
-    setFailed('project_name is required');
+    setFatal('project_name is required');
   }
   if (!app_name || app_name === '') {
-    setFailed('app_name is required');
+    setFatal('app_name is required');
   }
   if (!environment || environment === '' || !(environment === 'development' || environment === 'test' || environment === 'production')) {
-    setFailed('environment is required and must be one of development, test or production');
+    setFatal('environment is required and must be one of development, test or production');
   }
   if (!broker_url || broker_url === '') {
-    setFailed('broker_url is required');
+    setFatal('broker_url is required');
   }
   if (!vault_addr || vault_addr === '') {
-    setFailed('vault_addr is required');
+    setFatal('vault_addr is required');
   }
   const intentionPayload = intention(project_name, app_name, environment, context.payload.repository.html_url);
   const {intentionToken, actionToken} = await openBrokerIntention(intentionPayload);
   if (!actionToken || !intentionToken) {
-    setFailed(`intention call failed, no action token or intention token`);
+    setFatal(`intention call failed, no action token or intention token`);
   }
   const wrappedToken = await getWrappedToken(actionToken);
   if (!wrappedToken) {
-    setFailed(`wrapped token call failed, no wrapped token`);
+    setFatal(`wrapped token call failed, no wrapped token`);
   }
   const vaultToken = await getVaultToken(wrappedToken);
   if (!vaultToken) {
-    setFailed(`vault token call failed, no vault token`);
+    setFatal(`vault token call failed, no vault token`);
   }
   setOutput('vault_token', vaultToken);
   await closeIntention(intentionToken);
@@ -144,5 +148,5 @@ await main();
 process.on('unhandledRejection', (reason, promise) => {
   let error = `Unhandled Rejection occurred. ${reason.stack}`
   console.error(error)
-  setFailed(error)
+  setFatal(error)
 });
