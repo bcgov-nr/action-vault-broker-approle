@@ -64,34 +64,33 @@ jobs:
             ${{ steps.changelog.outputs.clean_changelog }}
           comment_tag: '# Current changelog'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
   retags:
     name: Test action
     permissions:
       packages: write
-    runs-on: ubuntu-22.04    
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
-
+      - uses: actions/checkout@v4
       - name: Test Retags
         id: broker
         uses: ./
         with:
           broker_jwt: ${{ secrets.BROKER_JWT }}
           provision_role_id: ${{ secrets.PROVISION_ROLE }}
-          project_name: client
-          app_name: app-client
+          project_name: nr-oracle
+          app_name: nr-oracle-service
           environment: development
 
       - name: Import Secrets
         id: secrets
-        uses: hashicorp/vault-action@v2.5.0
+        uses: hashicorp/vault-action@v2.7.4
         with:
           url: https://vault-iit.apps.silver.devops.gov.bc.ca
           token: ${{ steps.broker.outputs.vault_token }}
           exportEnv: 'false'
           secrets: |
-            apps/data/${{ secrets.SECRET_PATH}} sample | SAMPLE;
+            apps/data/${{ secrets.SECRET_PATH}} test | TEST;
 
       - name: Checks
-        run: echo ${{ steps.secrets.outputs.SAMPLE }}
+        run: echo ${{ steps.secrets.outputs.TEST }}
