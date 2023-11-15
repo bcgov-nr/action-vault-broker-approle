@@ -25,7 +25,7 @@ const intention = (projectName, serviceName, environment, eventURL) => {
         "service": {
           "name": "${serviceName}",
           "project": "${projectName}",
-          "environment":"${environment}",
+          "environment":"${environment}"
         }
       }
     ],
