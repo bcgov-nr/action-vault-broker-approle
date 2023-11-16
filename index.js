@@ -62,7 +62,7 @@ async function openBrokerIntention(intentionPayload) {
 
 async function getWrappedToken(actionToken) {
   try {
-    const wrappedData = await axios.post(`${vault_addr}/v1/provision/token/self`, undefined, {
+    const wrappedData = await axios.post(`${broker_url}/v1/provision/token/self`, undefined, {
       headers: {
         'x-broker-token': actionToken,
         'x-vault-role-id': provision_role_id
