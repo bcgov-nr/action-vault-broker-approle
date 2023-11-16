@@ -1,4 +1,4 @@
-import {error, getInput, setFailed, setOutput} from '@actions/core'
+import {error, getInput, setCommandEcho, setFailed, setOutput} from '@actions/core'
 import {context} from '@actions/github'
 import axios from "axios";
 
@@ -137,7 +137,8 @@ async function main() {
   if (!vaultToken) {
     setFatal(`vault token call failed, no vault token`);
   }
-  setOutput('::add-mask::vault_token', vaultToken);
+  console.info(`echo ::add-mask::${vaultToken}`);
+  console.info(`echo "vault_token=${vaultToken}" >> "$GITHUB_OUTPUT"`);
   await closeIntention(intentionToken);
 
 }
