@@ -137,7 +137,7 @@ async function main() {
   if (!vaultToken) {
     setFatal(`vault token call failed, no vault token`);
   }
-  setOutput('vault_token', vaultToken);
+  setOutput('::add-mask::vault_token', vaultToken);
   await closeIntention(intentionToken);
 
 }
