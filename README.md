@@ -4,15 +4,22 @@
 [![MIT License](https://img.shields.io/github/license/bcgov-nr/action-vault-broker-approle.svg)](/LICENSE)
 [![Lifecycle](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/bcgov/repomountie/blob/master/doc/lifecycle-badges.md)
 
-# Vault Approle Token extractor through Vault Broker API
+# Vault App role Token extractor through Vault Broker API
 
-This action acquires an approle token from vault through the Broker API. This allows the team to access and generate tokens through the github action pipeline.
+This action acquires an approle token from vault through the Broker API. This allows the team to read secrets through the GitHub action pipeline.
 
 This is useful in CI/CD pipelines where you need to access a secret, get a vault token or anything vault related.
 
 This tool is currently based on the existing documentation provided by 1team.
 
-# Usage
+## Prerequisites
+    1. Discussion with 1team/DBA to start the onboarding process on vault.
+    2. Project setup is done for 3 envs development, test and production.
+    3. The provision_role_id is environment specific and should be stored in as secrets in the github repository.
+    4. The broker_jwt is global and NOT environment specific and should be stored in as secrets in the github repository.
+
+
+## Usage
 
 ```yaml
 - uses: bcgov-nr/action-vault-broker-approle@main
@@ -97,58 +104,11 @@ jobs:
           token: ${{ steps.broker.outputs.vault_token }}
           exportEnv: 'false'
           secrets: |
-            apps/data/dev/super_secrets username | SECRET_USER;
-            apps/data/dev/super_secrets password | SECRET_PWD;
+            apps/data/${environment}/${project_name}/${app_name}/super_secrets username | SECRET_USER;
+            apps/data/${environment}/${project_name}/${app_name}/super_secrets password | SECRET_PWD;
 
 ```
 
-# Example, Matrix Token Reads
-
-Read from multiple environments.
-
-Create or modify a GitHub workflow, like below.  E.g. `./github/workflows/pr-open.yml`
-
-```yaml
-name: Pull Request
-
-on:
-  pull_request:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  builds:
-    permissions:
-      packages: write
-    runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        env: [dev, test]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Broker
-        id: broker
-        uses: bcgov-nr/action-vault-broker-approle@main
-        with:
-          broker_jwt: ${{ secrets.BROKER_JWT }}
-          provision_role_id: ${{ secrets.PROVISION_ROLE }}
-          project_name: super
-          app_name: app-super
-          environment: development
-      - name: Import Secrets
-        id: secrets
-        uses: hashicorp/vault-action@v2.5.0
-        with:
-          url: https://vault-iit.apps.silver.devops.gov.bc.ca
-          token: ${{ steps.broker.outputs.vault_token }}
-          exportEnv: 'false'
-          secrets: |
-            apps/data/${{ matrix.env }}/super_secrets username | SECRET_USER;
-            apps/data/${{ matrix.env }}/super_secrets password | SECRET_PWD;
-
-```
 
 # Output
 
@@ -158,4 +118,4 @@ See examples above.
 
 <!-- # Acknowledgements
 
-This Action is provided courtesty of the Forestry Suite of Applications, part of the Government of British Columbia. -->
+This Action is provided courtesy of the FDS Team and Architecture Team, part of the Government of British Columbia. -->
