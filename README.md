@@ -85,6 +85,11 @@ jobs:
     permissions:
       packages: write
     runs-on: ubuntu-22.04
+    env:
+      project_name: super
+      app_name: app-super
+      environment: development
+      secret_path_env: dev # this path is different from the path in the broker
     steps:
       - uses: actions/checkout@v3
       - name: Broker
@@ -93,9 +98,9 @@ jobs:
         with:
           broker_jwt: ${{ secrets.BROKER_JWT }}
           provision_role_id: ${{ secrets.PROVISION_ROLE }}
-          project_name: super
-          app_name: app-super
-          environment: development
+          project_name: ${{ env.project_name }}
+          app_name: ${{ env.app_name }}
+          environment: ${{ env.environment }}
       - name: Import Secrets
         id: secrets
         uses: hashicorp/vault-action@v2.5.0
@@ -104,8 +109,8 @@ jobs:
           token: ${{ steps.broker.outputs.vault_token }}
           exportEnv: 'false'
           secrets: |
-            apps/data/${environment}/${project_name}/${app_name}/super_secrets username | SECRET_USER;
-            apps/data/${environment}/${project_name}/${app_name}/super_secrets password | SECRET_PWD;
+            apps/data/${{ env.secret_path_env }}/${{ env.project_name }}/${{ env.app_name }}/super_secrets username | SECRET_USER;
+            apps/data/${{ env.secret_path_env }}/${{ env.project_name }}/${{ env.app_name }}/super_secrets password | SECRET_PWD;
 
 ```
 
